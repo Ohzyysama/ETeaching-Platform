@@ -5,7 +5,7 @@ import { PaperButton, Field, inputClass, blueLinkClass } from "@/components/ui";
 
 export function LoginForm() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -14,7 +14,7 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setPending(true);
-    const res = await signIn({ email, password });
+    const res = await signIn({ username, password });
     if (!res.ok) {
       setError(res.error ?? "登录失败。");
       setPending(false);
@@ -28,13 +28,12 @@ export function LoginForm() {
     <form onSubmit={onSubmit} className="space-y-4">
       {error ? <p className="font-sans text-sm text-[#ff6f61]">{error}</p> : null}
 
-      <Field label="邮箱">
+      <Field label="用户名">
         <input
           className={inputClass}
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoComplete="username"
           required
         />
       </Field>

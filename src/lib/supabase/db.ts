@@ -1,4 +1,5 @@
 import { supabase } from "./client";
+import { usernameToEmail } from "./auth";
 import type { Assignment, Class, Profile, Submission } from "./types";
 
 export type Result = { ok: true } | { ok: false; error: string };
@@ -64,6 +65,12 @@ export async function updateProfile(
     .update({ name, username })
     .eq("id", userId);
   if (error) return { ok: false, error: error.message };
+
+  // 同步更新登录邮箱（登录标识 = username 哈希出的邮箱），否则改名后用新名登录不上。
+  const email = await usernameToEmail(username);
+  const { error: emailErr } = await supabase.auth.updateUser({ email });
+  if (emailErr) return { ok: false, error: "用户名已保存，但登录标识更新失败，请稍后重试。" };
+
   return { ok: true };
 }
 

@@ -1,13 +1,21 @@
-"use client";
-
 import { supabase } from "./client";
 import type { Profile } from "./types";
 
 export type AuthResult = { ok: true } | { ok: false; error: string };
 
+// Supabase 登录账号必须是邮箱，这里把「用户名」用 SHA-256 哈希成一个内部邮箱，
+// 让用户可以始终用「用户名 + 密码」登录（中文用户名也支持）。
+export async function usernameToEmail(username: string): Promise<string> {
+  const data = new TextEncoder().encode(username);
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  const hex = Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `u${hex.slice(0, 40)}@eteaching.local`;
+}
+
 /** 学生注册：先查用户名唯一，再 signUp，最后绑定班级。 */
 export async function signUp(input: {
-  email: string;
   name: string;
   username: string;
   password: string;
@@ -20,17 +28,13 @@ export async function signUp(input: {
     .maybeSingle();
   if (existing) return { ok: false, error: "该用户名已被注册，请换一个。" };
 
+  const email = await usernameToEmail(input.username);
   const { data, error } = await supabase.auth.signUp({
-    email: input.email,
+    email,
     password: input.password,
     options: { data: { name: input.name, username: input.username } },
   });
-  if (error) {
-    if (/already registered|already been registered/i.test(error.message)) {
-      return { ok: false, error: "该邮箱已被注册。" };
-    }
-    return { ok: false, error: error.message };
-  }
+  if (error) return { ok: false, error: error.message };
 
   if (data.user) {
     await supabase
@@ -38,20 +42,20 @@ export async function signUp(input: {
       .update({ class_id: input.classId })
       .eq("id", data.user.id);
   }
-
   return { ok: true };
 }
 
-/** 登录：邮箱 + 密码。 */
+/** 登录：用户名 + 密码。 */
 export async function signIn(input: {
-  email: string;
+  username: string;
   password: string;
 }): Promise<AuthResult> {
+  const email = await usernameToEmail(input.username);
   const { error } = await supabase.auth.signInWithPassword({
-    email: input.email,
+    email,
     password: input.password,
   });
-  if (error) return { ok: false, error: "邮箱或密码错误。" };
+  if (error) return { ok: false, error: "用户名或密码错误。" };
   return { ok: true };
 }
 

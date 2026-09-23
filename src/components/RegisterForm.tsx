@@ -9,7 +9,6 @@ export function RegisterForm() {
   const navigate = useNavigate();
   const [classes, setClasses] = useState<Class[]>([]);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -35,7 +34,7 @@ export function RegisterForm() {
     }
 
     setPending(true);
-    const res = await signUp({ email, name, username, password, classId });
+    const res = await signUp({ name, username, password, classId });
     if (!res.ok) {
       setError(res.error ?? "注册失败。");
       setPending(false);
@@ -58,18 +57,7 @@ export function RegisterForm() {
         />
       </Field>
 
-      <Field label="邮箱" hint="用于登录，作为账号">
-        <input
-          className={inputClass}
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          required
-        />
-      </Field>
-
-      <Field label="用户名" hint="展示用，支持汉字，不能与他人重复">
+      <Field label="用户名" hint="用于登录，支持汉字，不能与他人重复">
         <input
           className={inputClass}
           value={username}
