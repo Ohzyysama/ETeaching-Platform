@@ -144,6 +144,7 @@ export default function Assignment() {
             initialRemark={submission?.remark ?? ""}
             initialImages={submitted ? submittedImages : []}
             canSubmit={canSubmit}
+            onSaved={reload}
           />
         </div>
       )}

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { submitAssignment } from "@/lib/supabase/db";
 import { PaperButton, Field, SectionLabel, inputClass } from "@/components/ui";
@@ -11,15 +10,16 @@ export function SubmissionForm({
   initialRemark,
   initialImages,
   canSubmit,
+  onSaved,
 }: {
   assignmentId: string;
   submitted: boolean;
   initialRemark?: string;
   initialImages?: string[];
   canSubmit: boolean;
+  onSaved: () => void;
 }) {
   const { profile } = useAuth();
-  const navigate = useNavigate();
   const [remark, setRemark] = useState(initialRemark ?? "");
   const [images, setImages] = useState<string[]>(initialImages ?? []);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +43,8 @@ export function SubmissionForm({
       setPending(false);
       return;
     }
-    navigate(`/student/assignments/${assignmentId}`);
+    setPending(false);
+    onSaved();
   }
 
   return (
@@ -59,7 +60,7 @@ export function SubmissionForm({
       </Field>
 
       <PaperButton type="submit" variant="primary" disabled={pending || !canSubmit}>
-        {pending ? "提交中…" : submitted ? "保存修改" : "提交作业"}
+        {pending ? "提交中…" : submitted ? "已提交（可修改）" : "提交作业"}
       </PaperButton>
     </form>
   );
