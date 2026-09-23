@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
+import { supabaseConfigured } from "@/lib/supabase/client";
 import { Nav } from "@/components/Nav";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
@@ -50,6 +51,22 @@ function RequireAuth({
 }
 
 export default function App() {
+  if (!supabaseConfigured) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <h1 className="font-bold text-xl text-[#ff6f61]">缺少 Supabase 配置</h1>
+        <p className="font-sans text-sm text-gray-600 mt-3 max-w-md leading-relaxed">
+          请设置环境变量 <code className="font-mono text-xs">VITE_SUPABASE_URL</code> 和{" "}
+          <code className="font-mono text-xs">VITE_SUPABASE_ANON_KEY</code>。
+          <br />
+          本地：写入 <code className="font-mono text-xs">.env.local</code>；
+          <br />
+          部署：GitHub 仓库 Settings → Secrets and variables → Actions 新增这两个 secret。
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Nav />
