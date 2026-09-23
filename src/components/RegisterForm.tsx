@@ -1,22 +1,25 @@
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
-import { register } from "@/lib/actions/auth";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { signUp } from "@/lib/supabase/auth";
+import { listClasses } from "@/lib/supabase/db";
+import type { Class } from "@/lib/supabase/types";
 import { PaperButton, Field, inputClass, blueLinkClass } from "@/components/ui";
 
-export function RegisterForm({
-  classes,
-}: {
-  classes: { id: string; name: string }[];
-}) {
+export function RegisterForm() {
+  const navigate = useNavigate();
+  const [classes, setClasses] = useState<Class[]>([]);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [classId, setClassId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    listClasses().then(setClasses).catch(() => setClasses([]));
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,20 +35,18 @@ export function RegisterForm({
     }
 
     setPending(true);
-    const res = await register({ name, username, password, classId });
+    const res = await signUp({ email, name, username, password, classId });
     if (!res.ok) {
       setError(res.error ?? "注册失败。");
       setPending(false);
       return;
     }
-    window.location.assign(res.redirectTo ?? "/student");
+    navigate("/student");
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {error ? (
-        <p className="font-sans text-sm text-[#ff6f61]">{error}</p>
-      ) : null}
+      {error ? <p className="font-sans text-sm text-[#ff6f61]">{error}</p> : null}
 
       <Field label="姓名">
         <input
@@ -57,7 +58,18 @@ export function RegisterForm({
         />
       </Field>
 
-      <Field label="用户名" hint="用于登录，支持汉字，不能与他人重复">
+      <Field label="邮箱" hint="用于登录，作为账号">
+        <input
+          className={inputClass}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          required
+        />
+      </Field>
+
+      <Field label="用户名" hint="展示用，支持汉字，不能与他人重复">
         <input
           className={inputClass}
           value={username}
@@ -113,7 +125,7 @@ export function RegisterForm({
 
       <p className="font-sans text-sm text-gray-500">
         已有账号？{" "}
-        <Link href="/login" className={blueLinkClass()}>
+        <Link to="/login" className={blueLinkClass()}>
           去登录
         </Link>
       </p>

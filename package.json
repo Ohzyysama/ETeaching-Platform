@@ -2,36 +2,25 @@
   "name": "eteaching-platform",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "node scripts/next.cjs dev --webpack",
-    "prebuild": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true,maxRetries:10,retryDelay:200})\"",
-    "build": "node scripts/next.cjs build --webpack",
-    "start": "node scripts/next.cjs start",
-    "lint": "eslint",
-    "db:generate": "prisma generate",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
-    "create-teacher": "tsx prisma/createTeacher.ts"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@prisma/client": "^6.0.0",
-    "bcryptjs": "^2.4.3",
-    "next": "16.3.5",
+    "@supabase/supabase-js": "^2.117.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^3.23.8"
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.3.5",
-    "prisma": "^6.0.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "tailwindcss": "^4",
-    "tsx": "^4.19.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.0"
   }
 }

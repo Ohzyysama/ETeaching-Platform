@@ -1,5 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 /* Tropical Paradise shared primitives.
  * Teal #00897b · warm yellow #fffde7 · coral #ff6f61 · mango #ffc107.
@@ -73,12 +73,12 @@ export function SectionTitle({
 
 /** link styled as a tropical button (for navigation, not submit) */
 export function PaperLink({
-  href,
+  to,
   variant = "primary",
   className = "",
   children,
 }: {
-  href: string;
+  to: string;
   variant?: "primary" | "secondary";
   className?: string;
   children: ReactNode;
@@ -91,7 +91,7 @@ export function PaperLink({
       "bg-white text-[#00897b] border-2 border-[#00897b]/20 hover:bg-[#fffde7]",
   } as const;
   return (
-    <Link href={href} className={`${base} ${variants[variant]} ${className}`}>
+    <Link to={to} className={`${base} ${variants[variant]} ${className}`}>
       {children}
     </Link>
   );

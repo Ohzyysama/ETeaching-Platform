@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { formatDateTime } from "@/lib/format";
 import { blueLinkClass } from "@/components/ui";
 import { ScoreCell } from "./ScoreCell";
@@ -15,13 +15,14 @@ export interface StatsRow {
   submissionId: string | null;
 }
 
-/** booktabs three-line table: 姓名 / 是否提交 / 提交时间 / 分数 (+ 操作) */
 export function SubmissionTable({
   rows,
   dueAt,
+  onSaved,
 }: {
   rows: StatsRow[];
   dueAt: Date;
+  onSaved: () => void;
 }) {
   const now = new Date();
   const link = blueLinkClass();
@@ -42,17 +43,11 @@ export function SubmissionTable({
           {rows.map((r) => {
             const overdue = !r.submitted && now.getTime() > dueAt.getTime();
             return (
-              <tr
-                key={r.studentId}
-                className="border-t border-[#00897b]/10"
-              >
+              <tr key={r.studentId} className="border-t border-[#00897b]/10">
                 <td className="px-4 py-3">
                   <span className="font-bold">{r.name}</span>
-                  <span className="text-gray-500 ml-1 text-sm">
-                    （{r.username}）
-                  </span>
+                  <span className="text-gray-500 ml-1 text-sm">（{r.username}）</span>
                 </td>
-
                 <td className="px-4 py-3">
                   {r.submitted ? (
                     <span>已提交</span>
@@ -62,37 +57,23 @@ export function SubmissionTable({
                     <span className="text-gray-500">未交</span>
                   )}
                 </td>
-
                 <td className="px-4 py-3">
                   {r.submittedAt ? (
-                    <span className={r.late ? "text-[#ff6f61]" : ""}>
-                      {formatDateTime(r.submittedAt)}
-                    </span>
+                    <span className={r.late ? "text-[#ff6f61]" : ""}>{formatDateTime(r.submittedAt)}</span>
                   ) : (
                     <span className="text-gray-500">—</span>
                   )}
                 </td>
-
                 <td className="px-4 py-3">
                   {r.submissionId ? (
-                    <ScoreCell
-                      submissionId={r.submissionId}
-                      score={r.score}
-                      graded={r.graded}
-                    />
+                    <ScoreCell submissionId={r.submissionId} score={r.score} graded={r.graded} onSaved={onSaved} />
                   ) : (
                     <span className="text-gray-500">0</span>
                   )}
                 </td>
-
                 <td className="px-4 py-3">
                   {r.submissionId ? (
-                    <Link
-                      href={`/teacher/submissions/${r.submissionId}`}
-                      className={link}
-                    >
-                      查看
-                    </Link>
+                    <Link to={`/teacher/submissions/${r.submissionId}`} className={link}>查看</Link>
                   ) : (
                     <span className="text-gray-500">—</span>
                   )}

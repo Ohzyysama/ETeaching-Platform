@@ -1,12 +1,11 @@
-"use client";
-
 import { useState } from "react";
-import Link from "next/link";
-import { login } from "@/lib/actions/auth";
+import { Link, useNavigate } from "react-router-dom";
+import { signIn, getCurrentProfile } from "@/lib/supabase/auth";
 import { PaperButton, Field, inputClass, blueLinkClass } from "@/components/ui";
 
 export function LoginForm() {
-  const [username, setUsername] = useState("");
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -15,27 +14,27 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setPending(true);
-    const res = await login({ username, password });
+    const res = await signIn({ email, password });
     if (!res.ok) {
       setError(res.error ?? "登录失败。");
       setPending(false);
       return;
     }
-    window.location.assign(res.redirectTo ?? "/");
+    const profile = await getCurrentProfile();
+    navigate(profile?.role === "teacher" ? "/teacher" : "/student");
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {error ? (
-        <p className="font-sans text-sm text-[#ff6f61]">{error}</p>
-      ) : null}
+      {error ? <p className="font-sans text-sm text-[#ff6f61]">{error}</p> : null}
 
-      <Field label="用户名">
+      <Field label="邮箱">
         <input
           className={inputClass}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          autoComplete="username"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
           required
         />
       </Field>
@@ -57,7 +56,7 @@ export function LoginForm() {
 
       <p className="font-sans text-sm text-gray-500">
         还没有账号？{" "}
-        <Link href="/register" className={blueLinkClass()}>
+        <Link to="/register" className={blueLinkClass()}>
           学生自助注册
         </Link>
       </p>

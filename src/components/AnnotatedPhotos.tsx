@@ -1,29 +1,41 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { saveAnnotation } from "@/lib/actions/feedback";
+import { useAuth } from "@/lib/auth-context";
+import { saveAnnotation } from "@/lib/supabase/db";
+import { uploadDataUrl } from "@/lib/supabase/storage";
 import { AnnotationDrawer } from "./AnnotationDrawer";
 
 export function AnnotatedPhotos({
   submissionId,
   images,
   annotations,
+  onSaved,
 }: {
   submissionId: string;
   images: string[];
   annotations: (string | null)[];
+  onSaved: () => void;
 }) {
-  const router = useRouter();
+  const { profile } = useAuth();
   const [annotating, setAnnotating] = useState<number | null>(null);
   const [viewing, setViewing] = useState<number | null>(null);
 
-  async function onSaveAnnotation(dataUrl: string) {
-    if (annotating === null) return;
-    const res = await saveAnnotation({ submissionId, index: annotating, dataUrl });
+  async function onSaveAnnotation(canvasDataUrl: string) {
+    if (annotating === null || !profile) return;
+    const url = await uploadDataUrl("annotations", canvasDataUrl);
+    if (!url) {
+      window.alert("涂鸦上传失败。");
+      return;
+    }
+    const res = await saveAnnotation({
+      submissionId,
+      index: annotating,
+      dataUrl: url,
+      teacherId: profile.id,
+      annotations,
+    });
     if (res.ok) {
       setAnnotating(null);
-      router.refresh();
+      onSaved();
     } else {
       window.alert(res.error ?? "保存涂鸦失败。");
     }
@@ -38,33 +50,17 @@ export function AnnotatedPhotos({
             <div key={i} className="flex flex-col gap-2">
               <div className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={src}
-                  alt={`提交照片 ${i + 1}`}
-                  className="max-w-xs rounded-2xl border-2 border-[#00897b]/20"
-                />
+                <img src={src} alt={`提交照片 ${i + 1}`} className="max-w-xs rounded-2xl border-2 border-[#00897b]/20" />
                 {ann ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={ann}
-                    alt="批改涂鸦"
-                    className="absolute inset-0 w-full h-full rounded-2xl"
-                  />
+                  <img src={ann} alt="批改涂鸦" className="absolute inset-0 w-full h-full rounded-2xl" />
                 ) : null}
               </div>
               <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAnnotating(i)}
-                  className="rounded-full font-bold text-xs px-3 py-1.5 bg-[#00897b] text-white hover:bg-[#00796b] transition-all"
-                >
+                <button type="button" onClick={() => setAnnotating(i)} className="rounded-full font-bold text-xs px-3 py-1.5 bg-[#00897b] text-white hover:bg-[#00796b] transition-all">
                   涂鸦批改
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setViewing(i)}
-                  className="rounded-full font-bold text-xs px-3 py-1.5 bg-white text-[#00897b] border-2 border-[#00897b]/20 hover:bg-[#fffde7] transition-all"
-                >
+                <button type="button" onClick={() => setViewing(i)} className="rounded-full font-bold text-xs px-3 py-1.5 bg-white text-[#00897b] border-2 border-[#00897b]/20 hover:bg-[#fffde7] transition-all">
                   放大
                 </button>
               </div>
@@ -83,32 +79,16 @@ export function AnnotatedPhotos({
       ) : null}
 
       {viewing !== null ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#00897b]/90 p-4"
-          onClick={() => setViewing(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setViewing(null)}
-            aria-label="关闭"
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white text-[#00897b] text-2xl font-bold flex items-center justify-center hover:bg-[#ff6f61] hover:text-white transition-colors"
-          >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#00897b]/90 p-4" onClick={() => setViewing(null)}>
+          <button type="button" onClick={() => setViewing(null)} aria-label="关闭" className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white text-[#00897b] text-2xl font-bold flex items-center justify-center hover:bg-[#ff6f61] hover:text-white transition-colors">
             ×
           </button>
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={images[viewing]}
-              alt={`照片 ${viewing + 1}`}
-              className="max-h-[85vh] max-w-[90vw] rounded-2xl border-4 border-white"
-            />
+            <img src={images[viewing]} alt={`照片 ${viewing + 1}`} className="max-h-[85vh] max-w-[90vw] rounded-2xl border-4 border-white" />
             {annotations[viewing] ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={annotations[viewing]!}
-                alt="批改涂鸦"
-                className="absolute inset-0 w-full h-full rounded-2xl"
-              />
+              <img src={annotations[viewing]!} alt="批改涂鸦" className="absolute inset-0 w-full h-full rounded-2xl" />
             ) : null}
           </div>
         </div>

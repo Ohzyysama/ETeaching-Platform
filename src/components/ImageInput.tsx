@@ -1,31 +1,35 @@
-"use client";
-
-import { useRef } from "react";
-import { fileToDataUrl } from "@/lib/client-file";
+import { useRef, useState } from "react";
+import { uploadFile, type Bucket } from "@/lib/supabase/storage";
 import { PaperButton } from "@/components/ui";
 
 const MAX_MB = 5;
 const MAX_COUNT = 10;
 
 export function ImageInput({
+  bucket,
   images,
   onChange,
 }: {
+  bucket: Bucket;
   images: string[];
-  onChange: (images: string[]) => void;
+  onChange: (urls: string[]) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   async function onFiles(files: FileList | null) {
     if (!files) return;
+    setUploading(true);
     const next = [...images];
     for (const file of Array.from(files)) {
       if (next.length >= MAX_COUNT) break;
       if (!file.type.startsWith("image/")) continue;
       if (file.size > MAX_MB * 1024 * 1024) continue;
-      next.push(await fileToDataUrl(file));
+      const url = await uploadFile(bucket, file);
+      if (url) next.push(url);
     }
     onChange(next);
+    setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -45,13 +49,13 @@ export function ImageInput({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={src}
-                alt={`配图 ${i + 1}`}
-                className="h-24 w-24 object-cover"
+                alt={`图片 ${i + 1}`}
+                className="h-24 w-24 object-cover rounded-2xl"
               />
               <button
                 type="button"
                 onClick={() => remove(i)}
-                aria-label={`移除配图 ${i + 1}`}
+                aria-label={`移除图片 ${i + 1}`}
                 className="absolute top-1 right-1 bg-[#00897b] text-white text-xs leading-none px-2 py-1 rounded-full font-bold hover:bg-[#ff6f61] transition-colors"
               >
                 ×
@@ -74,9 +78,9 @@ export function ImageInput({
           type="button"
           variant="secondary"
           onClick={() => inputRef.current?.click()}
-          disabled={images.length >= MAX_COUNT}
+          disabled={images.length >= MAX_COUNT || uploading}
         >
-          添加图片
+          {uploading ? "上传中…" : "添加图片"}
         </PaperButton>
         <span className="font-sans text-sm text-gray-500">
           单张 ≤ {MAX_MB}MB，最多 {MAX_COUNT} 张

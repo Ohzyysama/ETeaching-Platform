@@ -1,16 +1,16 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { joinClass } from "@/lib/actions/class";
+import { useAuth } from "@/lib/auth-context";
+import { joinClass } from "@/lib/supabase/db";
 import { PaperButton, inputClass } from "@/components/ui";
 
 export function JoinClassForm({
   classes,
+  onSaved,
 }: {
   classes: { id: string; name: string }[];
+  onSaved: () => void;
 }) {
-  const router = useRouter();
+  const { profile } = useAuth();
   const [classId, setClassId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -18,38 +18,25 @@ export function JoinClassForm({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!classId) {
-      setError("请选择班级。");
-      return;
-    }
+    if (!classId) return setError("请选择班级。");
+    if (!profile) return setError("未登录。");
     setPending(true);
-    const res = await joinClass(classId);
+    const res = await joinClass(profile.id, classId);
     if (!res.ok) {
       setError(res.error ?? "加入失败。");
       setPending(false);
       return;
     }
-    router.refresh();
+    onSaved();
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
-      {error ? (
-        <p className="font-sans text-sm text-[#ff6f61]">{error}</p>
-      ) : null}
-      <select
-        className={inputClass}
-        value={classId}
-        onChange={(e) => setClassId(e.target.value)}
-        required
-      >
-        <option value="" disabled>
-          请选择班级
-        </option>
+      {error ? <p className="font-sans text-sm text-[#ff6f61]">{error}</p> : null}
+      <select className={inputClass} value={classId} onChange={(e) => setClassId(e.target.value)} required>
+        <option value="" disabled>请选择班级</option>
         {classes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
+          <option key={c.id} value={c.id}>{c.name}</option>
         ))}
       </select>
       <PaperButton type="submit" variant="primary" disabled={pending}>

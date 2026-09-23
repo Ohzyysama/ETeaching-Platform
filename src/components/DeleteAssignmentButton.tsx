@@ -1,11 +1,13 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { deleteAssignment } from "@/lib/actions/assignment";
+import { deleteAssignment } from "@/lib/supabase/db";
 
-export function DeleteAssignmentButton({ id }: { id: string }) {
-  const router = useRouter();
+export function DeleteAssignmentButton({
+  id,
+  onSaved,
+}: {
+  id: string;
+  onSaved: () => void;
+}) {
   const [pending, setPending] = useState(false);
 
   async function onClick() {
@@ -13,8 +15,7 @@ export function DeleteAssignmentButton({ id }: { id: string }) {
     setPending(true);
     const res = await deleteAssignment(id);
     if (res.ok) {
-      router.push(res.redirectTo ?? "/teacher");
-      router.refresh();
+      onSaved();
     } else {
       window.alert(res.error ?? "删除失败。");
       setPending(false);

@@ -1,4 +1,4 @@
-import type { SubmissionStatus } from "./types";
+type SubmissionStatus = "not_submitted" | "submitted_on_time" | "submitted_late";
 
 /**
  * Whether a submission is late: submitted after the assignment due time.

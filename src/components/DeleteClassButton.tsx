@@ -1,33 +1,25 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { deleteClass } from "@/lib/actions/class";
+import { deleteClass } from "@/lib/supabase/db";
 
 export function DeleteClassButton({
   id,
   name,
   disabled,
+  onSaved,
 }: {
   id: string;
   name: string;
   disabled?: boolean;
+  onSaved: () => void;
 }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function onClick() {
-    if (
-      !window.confirm(
-        `确定删除班级「${name}」？该班作业与提交记录将一并删除，班内学生需重新选班。`
-      )
-    ) {
-      return;
-    }
+    if (!window.confirm(`确定删除班级「${name}」？该班作业与提交记录将一并删除，班内学生需重新选班。`)) return;
     setPending(true);
     const res = await deleteClass(id);
     if (res.ok) {
-      router.refresh();
+      onSaved();
     } else {
       window.alert(res.error ?? "删除失败。");
       setPending(false);
