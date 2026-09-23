@@ -133,10 +133,10 @@ drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles
   for update using (auth.uid() = id) with check (auth.uid() = id);
 
--- ---- classes：登录可读；教师可增删 ----
+-- ---- classes：任何人可读（注册页需匿名选班级）；教师可增删 ----
 drop policy if exists classes_select on public.classes;
 create policy classes_select on public.classes
-  for select using (auth.role() = 'authenticated');
+  for select using (true);
 
 drop policy if exists classes_insert on public.classes;
 create policy classes_insert on public.classes

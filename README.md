@@ -56,7 +56,7 @@ npm run dev    # http://localhost:5173
 1. 先让学生正常注册，然后在 Supabase 控制台 → Table Editor → `profiles` 表，把该用户的 `role` 改成 `teacher`。
 2. 或在 SQL Editor 执行：
    ```sql
-   update public.profiles set role = 'teacher' where username = '要设为老师的用户名';
+   update public.profiles set role = 'teacher', class_id = null where username = '要设为老师的用户名';
    ```
 
 ## 目录结构

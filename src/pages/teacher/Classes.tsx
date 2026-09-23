@@ -24,7 +24,11 @@ export default function Classes() {
       const withCounts = await Promise.all(
         cls.map(async (c) => {
           const [{ count: sc }, { count: ac }] = await Promise.all([
-            supabase.from("profiles").select("*", { count: "exact", head: true }).eq("class_id", c.id),
+            supabase
+              .from("profiles")
+              .select("*", { count: "exact", head: true })
+              .eq("class_id", c.id)
+              .eq("role", "student"),
             supabase.from("assignments").select("*", { count: "exact", head: true }).eq("class_id", c.id),
           ]);
           return { id: c.id, name: c.name, studentCount: sc ?? 0, assignmentCount: ac ?? 0 };
