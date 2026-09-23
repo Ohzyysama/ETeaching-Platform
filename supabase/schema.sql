@@ -77,6 +77,35 @@ as $$
   select exists (select 1 from public.profiles where id = auth.uid() and role = 'student');
 $$;
 
+-- 以下函数用于策略内部，security definer 绕过 RLS，避免 assignments 与
+-- assignment_students 策略互相嵌套导致「infinite recursion」。
+create or replace function public.is_assignment_owner(assignment_id uuid)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.assignments a
+    where a.id = assignment_id and a.created_by = auth.uid()
+  );
+$$;
+
+create or replace function public.is_assigned_student(assignment_id uuid)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.assignment_students s
+    where s.assignment_id = assignment_id and s.student_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_before_deadline(assignment_id uuid)
+returns boolean language sql stable security definer set search_path = public
+as $$
+  select exists (
+    select 1 from public.assignments a
+    where a.id = assignment_id and a.due_at > now()
+  );
+$$;
+
 -- ---------- 注册时自动创建 profile ----------
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public
@@ -151,10 +180,7 @@ drop policy if exists assignments_select on public.assignments;
 create policy assignments_select on public.assignments
   for select using (
     created_by = auth.uid()
-    or exists (
-      select 1 from public.assignment_students s
-      where s.assignment_id = id and s.student_id = auth.uid()
-    )
+    or public.is_assigned_student(id)
   );
 
 drop policy if exists assignments_insert on public.assignments;
@@ -174,33 +200,23 @@ drop policy if exists assignment_students_select on public.assignment_students;
 create policy assignment_students_select on public.assignment_students
   for select using (
     student_id = auth.uid()
-    or exists (
-      select 1 from public.assignments a
-      where a.id = assignment_id and a.created_by = auth.uid()
-    )
+    or public.is_assignment_owner(assignment_id)
   );
 
 drop policy if exists assignment_students_insert on public.assignment_students;
 create policy assignment_students_insert on public.assignment_students
-  for insert with check (
-    exists (select 1 from public.assignments a where a.id = assignment_id and a.created_by = auth.uid())
-  );
+  for insert with check (public.is_assignment_owner(assignment_id));
 
 drop policy if exists assignment_students_delete on public.assignment_students;
 create policy assignment_students_delete on public.assignment_students
-  for delete using (
-    exists (select 1 from public.assignments a where a.id = assignment_id and a.created_by = auth.uid())
-  );
+  for delete using (public.is_assignment_owner(assignment_id));
 
 -- ---- submissions：学生管自己的（未批改且未截止才可改）；教师管自己作业的 ----
 drop policy if exists submissions_select on public.submissions;
 create policy submissions_select on public.submissions
   for select using (
     student_id = auth.uid()
-    or exists (
-      select 1 from public.assignments a
-      where a.id = assignment_id and a.created_by = auth.uid()
-    )
+    or public.is_assignment_owner(assignment_id)
   );
 
 drop policy if exists submissions_insert on public.submissions;
@@ -213,10 +229,7 @@ create policy submissions_update_student on public.submissions
     public.is_student()
     and student_id = auth.uid()
     and graded = false
-    and exists (
-      select 1 from public.assignments a
-      where a.id = assignment_id and a.due_at > now()
-    )
+    and public.is_before_deadline(assignment_id)
   ) with check (
     student_id = auth.uid() and graded = false
   );
@@ -225,10 +238,7 @@ drop policy if exists submissions_update_teacher on public.submissions;
 create policy submissions_update_teacher on public.submissions
   for update using (
     public.is_teacher()
-    and exists (
-      select 1 from public.assignments a
-      where a.id = assignment_id and a.created_by = auth.uid()
-    )
+    and public.is_assignment_owner(assignment_id)
   );
 
 -- ============================================================
