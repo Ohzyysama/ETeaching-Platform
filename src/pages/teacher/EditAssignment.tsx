@@ -29,7 +29,7 @@ export default function EditAssignment() {
         description: assignment.description,
         startAt: toLocalInputValue(new Date(assignment.start_at)),
         dueAt: toLocalInputValue(new Date(assignment.due_at)),
-        classId: assignment.class_id,
+        classIds: assignment.classIds,
         studentIds: (links ?? []).map((l) => l.student_id),
         images: assignment.images,
       });

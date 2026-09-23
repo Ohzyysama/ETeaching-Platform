@@ -8,6 +8,7 @@ export interface Profile {
   username: string;
   role: Role;
   class_id: string | null;
+  deleted_at: string | null;
   created_at: string;
 }
 
@@ -24,7 +25,6 @@ export interface Assignment {
   images: string[]; // Storage 图片 URL
   start_at: string;
   due_at: string;
-  class_id: string;
   created_by: string;
   created_at: string;
   updated_at: string;

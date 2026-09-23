@@ -18,6 +18,7 @@ create table if not exists public.profiles (
   username text not null unique,
   role text not null default 'student' check (role in ('teacher','student')),
   class_id uuid references public.classes(id) on delete set null,
+  deleted_at timestamptz,                        -- 软删除标记（删除学生）
   created_at timestamptz not null default now()
 );
 
@@ -28,10 +29,16 @@ create table if not exists public.assignments (
   images jsonb not null default '[]'::jsonb,      -- 图片 URL 数组（存 Storage）
   start_at timestamptz not null,
   due_at timestamptz not null,
-  class_id uuid not null references public.classes(id) on delete cascade,
   created_by uuid not null references public.profiles(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
+);
+
+-- 作业与班级：多对多（一个作业可关联多个班级）
+create table if not exists public.assignment_classes (
+  assignment_id uuid not null references public.assignments(id) on delete cascade,
+  class_id uuid not null references public.classes(id) on delete cascade,
+  primary key (assignment_id, class_id)
 );
 
 create table if not exists public.assignment_students (
@@ -59,8 +66,8 @@ create table if not exists public.submissions (
 );
 
 -- ---------- 索引 ----------
-create index if not exists assignments_class_id_idx on public.assignments(class_id);
 create index if not exists assignments_created_by_idx on public.assignments(created_by);
+create index if not exists assignment_classes_class_id_idx on public.assignment_classes(class_id);
 create index if not exists submissions_assignment_id_idx on public.submissions(assignment_id);
 create index if not exists profiles_class_id_idx on public.profiles(class_id);
 
@@ -150,6 +157,7 @@ create trigger submissions_touch before update on public.submissions
 alter table public.profiles enable row level security;
 alter table public.classes enable row level security;
 alter table public.assignments enable row level security;
+alter table public.assignment_classes enable row level security;
 alter table public.assignment_students enable row level security;
 alter table public.submissions enable row level security;
 
@@ -161,6 +169,11 @@ create policy profiles_select on public.profiles
 drop policy if exists profiles_update on public.profiles;
 create policy profiles_update on public.profiles
   for update using (auth.uid() = id) with check (auth.uid() = id);
+
+-- 教师可更新学生 profile（用于软删除学生等管理操作）
+drop policy if exists profiles_update_teacher on public.profiles;
+create policy profiles_update_teacher on public.profiles
+  for update using (public.is_teacher()) with check (public.is_teacher());
 
 -- ---- classes：任何人可读（注册页需匿名选班级）；教师可增删 ----
 drop policy if exists classes_select on public.classes;
@@ -194,6 +207,19 @@ create policy assignments_update on public.assignments
 drop policy if exists assignments_delete on public.assignments;
 create policy assignments_delete on public.assignments
   for delete using (created_by = auth.uid());
+
+-- ---- assignment_classes：登录可读；教师管自己作业的 ----
+drop policy if exists assignment_classes_select on public.assignment_classes;
+create policy assignment_classes_select on public.assignment_classes
+  for select using (auth.role() = 'authenticated');
+
+drop policy if exists assignment_classes_insert on public.assignment_classes;
+create policy assignment_classes_insert on public.assignment_classes
+  for insert with check (public.is_assignment_owner(assignment_id));
+
+drop policy if exists assignment_classes_delete on public.assignment_classes;
+create policy assignment_classes_delete on public.assignment_classes
+  for delete using (public.is_assignment_owner(assignment_id));
 
 -- ---- assignment_students：教师管自己的作业；学生看自己 ----
 drop policy if exists assignment_students_select on public.assignment_students;

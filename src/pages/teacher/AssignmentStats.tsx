@@ -41,7 +41,7 @@ export default function AssignmentStats() {
         <div>
           <h1 className="font-sans tracking-tight text-2xl md:text-3xl text-[#00897b]">{assignment.title}</h1>
           <p className="font-sans text-sm text-gray-500 mt-1">
-            {assignment.classes?.name} · 开始 {formatDateTime(assignment.start_at)} · 截止 {formatDateTime(assignment.due_at)}
+            {assignment.classNames?.join("、")} · 开始 {formatDateTime(assignment.start_at)} · 截止 {formatDateTime(assignment.due_at)}
           </p>
         </div>
         <PaperLink to={`/teacher/assignments/${id}/edit`} variant="secondary">编辑作业</PaperLink>

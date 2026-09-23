@@ -51,8 +51,8 @@ export function SubmissionForm({
     <form onSubmit={onSubmit} className="space-y-5">
       {error ? <p className="font-sans text-sm text-[#ff6f61]">{error}</p> : null}
 
-      <SectionLabel label={`作业照片（拍照上传，可多张，${images.length}/10）`} hint="请上传清晰可辨的作业照片">
-        <ImageInput bucket="submission-images" images={images} onChange={setImages} />
+      <SectionLabel label={`作业照片（拍照上传，可多张，${images.length}/20）`} hint="请上传清晰可辨的作业照片">
+        <ImageInput bucket="submission-images" images={images} onChange={setImages} maxCount={20} />
       </SectionLabel>
 
       <Field label="备注（可选）">

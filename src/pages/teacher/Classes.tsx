@@ -28,7 +28,8 @@ export default function Classes() {
               .from("profiles")
               .select("*", { count: "exact", head: true })
               .eq("class_id", c.id)
-              .eq("role", "student"),
+              .eq("role", "student")
+              .is("deleted_at", null),
             supabase.from("assignments").select("*", { count: "exact", head: true }).eq("class_id", c.id),
           ]);
           return { id: c.id, name: c.name, studentCount: sc ?? 0, assignmentCount: ac ?? 0 };

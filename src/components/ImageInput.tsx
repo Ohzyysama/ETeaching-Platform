@@ -3,16 +3,17 @@ import { uploadFile, type Bucket } from "@/lib/supabase/storage";
 import { PaperButton } from "@/components/ui";
 
 const MAX_MB = 5;
-const MAX_COUNT = 10;
 
 export function ImageInput({
   bucket,
   images,
   onChange,
+  maxCount = 10,
 }: {
   bucket: Bucket;
   images: string[];
   onChange: (urls: string[]) => void;
+  maxCount?: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -22,7 +23,7 @@ export function ImageInput({
     setUploading(true);
     const next = [...images];
     for (const file of Array.from(files)) {
-      if (next.length >= MAX_COUNT) break;
+      if (next.length >= maxCount) break;
       if (!file.type.startsWith("image/")) continue;
       if (file.size > MAX_MB * 1024 * 1024) continue;
       const url = await uploadFile(bucket, file);
@@ -78,12 +79,12 @@ export function ImageInput({
           type="button"
           variant="secondary"
           onClick={() => inputRef.current?.click()}
-          disabled={images.length >= MAX_COUNT || uploading}
+          disabled={images.length >= maxCount || uploading}
         >
           {uploading ? "上传中…" : "添加图片"}
         </PaperButton>
         <span className="font-sans text-sm text-gray-500">
-          单张 ≤ {MAX_MB}MB，最多 {MAX_COUNT} 张
+          单张 ≤ {MAX_MB}MB，最多 {maxCount} 张
         </span>
       </div>
     </div>

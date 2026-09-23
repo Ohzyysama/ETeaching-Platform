@@ -8,6 +8,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import TeacherDashboard from "@/pages/teacher/Dashboard";
 import ClassesPage from "@/pages/teacher/Classes";
+import StudentsPage from "@/pages/teacher/Students";
 import NewAssignment from "@/pages/teacher/NewAssignment";
 import AssignmentStats from "@/pages/teacher/AssignmentStats";
 import EditAssignment from "@/pages/teacher/EditAssignment";
@@ -89,6 +90,14 @@ export default function App() {
             element={
               <RequireAuth role="teacher">
                 <ClassesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/teacher/students"
+            element={
+              <RequireAuth role="teacher">
+                <StudentsPage />
               </RequireAuth>
             }
           />

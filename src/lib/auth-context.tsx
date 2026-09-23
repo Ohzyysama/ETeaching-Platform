@@ -40,7 +40,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("*")
       .eq("id", user.id)
       .single();
-    setProfile((data as Profile) ?? null);
+    const p = (data as Profile) ?? null;
+    // 被删除的学生：立即登出
+    if (p?.deleted_at) {
+      await supabase.auth.signOut();
+      setProfile(null);
+      return;
+    }
+    setProfile(p);
   }, []);
 
   useEffect(() => {

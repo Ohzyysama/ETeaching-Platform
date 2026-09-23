@@ -18,7 +18,7 @@ export interface AssignmentInitial {
   description: string;
   startAt: string;
   dueAt: string;
-  classId: string;
+  classIds: string[];
   studentIds: string[];
   images: string[];
 }
@@ -40,28 +40,39 @@ export function AssignmentForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [startAt, setStartAt] = useState(initial?.startAt ?? "");
   const [dueAt, setDueAt] = useState(initial?.dueAt ?? "");
-  const [classId, setClassId] = useState(initial?.classId ?? "");
+  const [classIds, setClassIds] = useState<string[]>(initial?.classIds ?? []);
   const [studentIds, setStudentIds] = useState<string[]>(initial?.studentIds ?? []);
   const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const classStudents = students.filter((s) => s.classId === classId);
+  const classStudents = students.filter((s) => s.classId && classIds.includes(s.classId));
+  const allClassesSelected = classes.length > 0 && classIds.length === classes.length;
 
-  function onChangeClass(nextClassId: string) {
-    setClassId(nextClassId);
+  function toggleClass(id: string) {
+    if (classIds.includes(id)) setClassIds(classIds.filter((x) => x !== id));
+    else setClassIds([...classIds, id]);
+    setStudentIds([]); // 班级变了，重置已选学生
+  }
+
+  function toggleAllClasses() {
+    if (allClassesSelected) {
+      setClassIds([]);
+    } else {
+      setClassIds(classes.map((c) => c.id));
+    }
     setStudentIds([]);
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!classId) return setError("请选择班级。");
+    if (classIds.length === 0) return setError("请选择班级。");
     if (studentIds.length === 0) return setError("请选择需要交作业的学生。");
     if (!profile) return setError("未登录。");
 
     setPending(true);
-    const payload = { title, description, startAt, dueAt, classId, studentIds, images };
+    const payload = { title, description, startAt, dueAt, classIds, studentIds, images };
     const res = assignmentId
       ? await updateAssignment(assignmentId, payload)
       : await createAssignment({ ...payload, teacherId: profile.id });
@@ -85,14 +96,25 @@ export function AssignmentForm({
         <textarea className={inputClass} rows={5} value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
 
-      <Field label="班级">
-        <select className={inputClass} value={classId} onChange={(e) => onChangeClass(e.target.value)} required>
-          <option value="" disabled>请选择班级</option>
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-      </Field>
+      <SectionLabel label={`选择班级（可多选，已选 ${classIds.length}）`}>
+        <div className="rounded-2xl border border-[#00897b]/20 bg-white">
+          <label className="flex items-center gap-2 px-3 py-2 border-b border-[#00897b]/20 font-sans text-sm cursor-pointer">
+            <input type="checkbox" checked={allClassesSelected} onChange={toggleAllClasses} />
+            <span className="font-bold">全选</span>
+            <span className="text-gray-500">（已选 {classIds.length} / {classes.length}）</span>
+          </label>
+          <ul className="max-h-40 overflow-y-auto">
+            {classes.map((c) => (
+              <li key={c.id}>
+                <label className="flex items-center gap-2 px-3 py-1.5 font-sans text-sm cursor-pointer hover:bg-[#fffde7]">
+                  <input type="checkbox" checked={classIds.includes(c.id)} onChange={() => toggleClass(c.id)} />
+                  <span>{c.name}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </SectionLabel>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="开始时间">
@@ -107,8 +129,8 @@ export function AssignmentForm({
         <ImageInput bucket="assignment-images" images={images} onChange={setImages} />
       </SectionLabel>
 
-      <SectionLabel label={`选择需要交作业的学生（已选 ${studentIds.length} / ${classStudents.length}）`} hint="先选择班级，再勾选该班级内的学生">
-        {classId ? (
+      <SectionLabel label={`选择需要交作业的学生（已选 ${studentIds.length} / ${classStudents.length}）`} hint="先选班级，再勾选这些班级内的学生">
+        {classIds.length > 0 ? (
           <StudentPicker students={classStudents} selected={studentIds} onChange={setStudentIds} />
         ) : (
           <p className="font-sans text-sm text-gray-500">请先选择班级。</p>

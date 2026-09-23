@@ -42,9 +42,20 @@ export async function listStudents(): Promise<Profile[]> {
     .from("profiles")
     .select("*")
     .eq("role", "student")
+    .is("deleted_at", null)
     .order("name", { ascending: true });
   if (error) throw error;
   return (data ?? []) as Profile[];
+}
+
+/** 软删除学生（保留 auth 账号，但不再出现在任何列表/统计中）。 */
+export async function deleteStudent(studentId: string): Promise<Result> {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ deleted_at: new Date().toISOString(), class_id: null })
+    .eq("id", studentId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 export async function updateProfile(
@@ -87,20 +98,24 @@ export async function joinClass(userId: string, classId: string): Promise<Result
 export async function listTeacherAssignments(teacherId: string) {
   const { data: assignments, error } = await supabase
     .from("assignments")
-    .select("*, classes(name)")
+    .select("*")
     .eq("created_by", teacherId)
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  const rows = (assignments ?? []) as (Assignment & { classes: { name: string } })[];
+  const rows = (assignments ?? []) as Assignment[];
   const ids = rows.map((a) => a.id);
   if (ids.length === 0) return [];
 
-  const [{ data: links }, { data: subs }] = await Promise.all([
+  const [{ data: links }, { data: subs }, { data: acLinks }] = await Promise.all([
     supabase.from("assignment_students").select("assignment_id").in("assignment_id", ids),
     supabase
       .from("submissions")
       .select("assignment_id, submitted_at, graded")
+      .in("assignment_id", ids),
+    supabase
+      .from("assignment_classes")
+      .select("assignment_id, classes(name)")
       .in("assignment_id", ids),
   ]);
 
@@ -112,6 +127,14 @@ export async function listTeacherAssignments(teacherId: string) {
     arr.push(s);
     subsBy.set(s.assignment_id, arr);
   }
+  const classNamesBy = new Map<string, string[]>();
+  for (const l of acLinks ?? []) {
+    const name = (l as { classes?: { name?: string } }).classes?.name;
+    if (!name) continue;
+    const arr = classNamesBy.get(l.assignment_id) ?? [];
+    if (!arr.includes(name)) arr.push(name);
+    classNamesBy.set(l.assignment_id, arr);
+  }
 
   return rows.map((a) => {
     const total = totalBy.get(a.id) ?? 0;
@@ -122,7 +145,7 @@ export async function listTeacherAssignments(teacherId: string) {
     const late = subs.filter((s) => s.submittedAt.getTime() > new Date(a.due_at).getTime()).length;
     return {
       ...a,
-      className: a.classes?.name ?? "",
+      classNames: classNamesBy.get(a.id) ?? [],
       total,
       submitted: subs.length,
       late,
@@ -135,11 +158,23 @@ export async function listTeacherAssignments(teacherId: string) {
 export async function getAssignment(assignmentId: string) {
   const { data, error } = await supabase
     .from("assignments")
-    .select("*, classes(name)")
+    .select("*")
     .eq("id", assignmentId)
     .single();
   if (error) throw error;
-  return data as Assignment & { classes: { name: string } };
+
+  const { data: acLinks } = await supabase
+    .from("assignment_classes")
+    .select("class_id, classes(name)")
+    .eq("assignment_id", assignmentId);
+
+  return {
+    ...(data as Assignment),
+    classIds: (acLinks ?? []).map((l) => (l as { class_id: string }).class_id),
+    classNames: (acLinks ?? [])
+      .map((l) => (l as { classes?: { name?: string } }).classes?.name)
+      .filter(Boolean) as string[],
+  };
 }
 
 export async function getAssignmentStats(assignmentId: string) {
@@ -185,7 +220,7 @@ export async function createAssignment(input: {
   images: string[];
   startAt: string;
   dueAt: string;
-  classId: string;
+  classIds: string[];
   studentIds: string[];
   teacherId: string;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -197,12 +232,16 @@ export async function createAssignment(input: {
       images: input.images,
       start_at: new Date(input.startAt).toISOString(),
       due_at: new Date(input.dueAt).toISOString(),
-      class_id: input.classId,
       created_by: input.teacherId,
     })
     .select("id")
     .single();
   if (error) return { ok: false, error: error.message };
+
+  const { error: acErr } = await supabase.from("assignment_classes").insert(
+    input.classIds.map((cid) => ({ assignment_id: data.id, class_id: cid }))
+  );
+  if (acErr) return { ok: false, error: acErr.message };
 
   const { error: linkError } = await supabase.from("assignment_students").insert(
     input.studentIds.map((sid) => ({ assignment_id: data.id, student_id: sid }))
@@ -219,7 +258,7 @@ export async function updateAssignment(
     images: string[];
     startAt: string;
     dueAt: string;
-    classId: string;
+    classIds: string[];
     studentIds: string[];
   }
 ): Promise<Result> {
@@ -231,17 +270,17 @@ export async function updateAssignment(
       images: input.images,
       start_at: new Date(input.startAt).toISOString(),
       due_at: new Date(input.dueAt).toISOString(),
-      class_id: input.classId,
     })
     .eq("id", assignmentId);
   if (error) return { ok: false, error: error.message };
 
-  const { error: delErr } = await supabase
-    .from("assignment_students")
-    .delete()
-    .eq("assignment_id", assignmentId);
-  if (delErr) return { ok: false, error: delErr.message };
+  await supabase.from("assignment_classes").delete().eq("assignment_id", assignmentId);
+  const { error: acErr } = await supabase.from("assignment_classes").insert(
+    input.classIds.map((cid) => ({ assignment_id: assignmentId, class_id: cid }))
+  );
+  if (acErr) return { ok: false, error: acErr.message };
 
+  await supabase.from("assignment_students").delete().eq("assignment_id", assignmentId);
   const { error: linkErr } = await supabase.from("assignment_students").insert(
     input.studentIds.map((sid) => ({ assignment_id: assignmentId, student_id: sid }))
   );
