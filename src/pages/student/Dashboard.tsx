@@ -43,7 +43,7 @@ export default function Dashboard() {
       <div className="px-6 md:px-8 py-8 md:py-10 max-w-md mx-auto">
         <SectionTitle number="1" title="请选择班级" className="mb-2" />
         <p className="font-sans text-sm text-gray-500 mb-4">你尚未加入任何班级，请先选择一个班级。</p>
-        <JoinClassForm classes={classes} onSaved={reload} />
+        <JoinClassForm classes={classes} />
       </div>
     );
   }

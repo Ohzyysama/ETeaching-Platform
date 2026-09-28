@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signUp } from "@/lib/supabase/auth";
+import { useAuth } from "@/lib/auth-context";
 import { listClasses } from "@/lib/supabase/db";
 import type { Class } from "@/lib/supabase/types";
 import { PaperButton, Field, inputClass, blueLinkClass } from "@/components/ui";
 
 export function RegisterForm() {
   const navigate = useNavigate();
+  const { refresh } = useAuth();
   const [classes, setClasses] = useState<Class[]>([]);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -40,6 +42,9 @@ export function RegisterForm() {
       setPending(false);
       return;
     }
+    // 重新读一次 profile 再跳转：注册过程中登录事件触发的那次读取可能早于
+    // 班级写入完成，不刷新的话下一页会以为学生还没选班级。
+    await refresh();
     navigate("/student");
   }
 

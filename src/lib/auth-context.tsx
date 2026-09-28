@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -27,10 +28,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // refresh 会被多处并发调用（登录事件、注册后、加入班级后）。晚发出的那次不代表
+  // 数据更新，所以用序号只认最后一次发起的结果，否则先发起的旧数据可能后到并覆盖新数据。
+  const seqRef = useRef(0);
+
   const refresh = useCallback(async () => {
+    const seq = ++seqRef.current;
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    if (seq !== seqRef.current) return;
     if (!user) {
       setProfile(null);
       return;
@@ -40,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("*")
       .eq("id", user.id)
       .single();
+    if (seq !== seqRef.current) return;
     const p = (data as Profile) ?? null;
     // 被删除的学生：立即登出
     if (p?.deleted_at) {

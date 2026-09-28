@@ -5,12 +5,10 @@ import { PaperButton, inputClass } from "@/components/ui";
 
 export function JoinClassForm({
   classes,
-  onSaved,
 }: {
   classes: { id: string; name: string }[];
-  onSaved: () => void;
 }) {
-  const { profile } = useAuth();
+  const { profile, refresh } = useAuth();
   const [classId, setClassId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -27,7 +25,9 @@ export function JoinClassForm({
       setPending(false);
       return;
     }
-    onSaved();
+    // 班级已经写进数据库，但上下文里的 profile 还是旧的。不重新读一次的话，
+    // Dashboard 会一直认为 class_id 为空，把本界面反复渲染出来（选完也出不去）。
+    await refresh();
   }
 
   return (

@@ -16,7 +16,7 @@ export default function Register() {
             学生注册
           </h1>
           <p className="font-sans text-sm text-gray-500 mt-1">
-            注册后选择加入一个班级
+            注册时请选择要加入的班级
           </p>
         </div>
         <RegisterForm />

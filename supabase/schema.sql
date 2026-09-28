@@ -118,11 +118,20 @@ create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.profiles (id, name, username)
+  insert into public.profiles (id, name, username, class_id)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'name', ''),
-    coalesce(new.raw_user_meta_data->>'username', new.email)
+    coalesce(new.raw_user_meta_data->>'username', new.email),
+    -- 注册时选的班级随 user_metadata 一起进来，建 profile 的这一刻就写好，
+    -- 不依赖「注册返回后再补一次 update」（那种写法会和界面读 profile 抢时序）。
+    -- 先确认班级存在再写入：id 不合法或班级已不存在就存 null，否则外键报错会把
+    -- 整个注册事务回滚掉，用户只会看到一句 "Database error saving new user"。
+    case
+      when coalesce(new.raw_user_meta_data->>'class_id', '') ~ '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+      then (select c.id from public.classes c
+            where c.id = (new.raw_user_meta_data->>'class_id')::uuid)
+    end
   );
   return new;
 end;

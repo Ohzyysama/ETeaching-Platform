@@ -32,16 +32,37 @@ export async function signUp(input: {
   const { data, error } = await supabase.auth.signUp({
     email,
     password: input.password,
-    options: { data: { name: input.name, username: input.username } },
+    // class_id 一起放进 user_metadata：数据库里的 handle_new_user 触发器在建 profile 的
+    // 那一刻就把班级写好，不用等 signUp 返回后再补一次 update
+    // （那次 update 会和界面读取 profile 抢时序，读早了就拿到 null）。
+    options: {
+      data: {
+        name: input.name,
+        username: input.username,
+        class_id: input.classId,
+      },
+    },
   });
   if (error) return { ok: false, error: error.message };
+  if (!data.user) return { ok: false, error: "注册失败，请稍后重试。" };
 
-  if (data.user) {
-    await supabase
-      .from("profiles")
-      .update({ class_id: input.classId })
-      .eq("id", data.user.id);
+  // 没拿到会话说明「Confirm email」还开着：此时没有登录态，RLS 不允许写 profiles，
+  // 班级绑不上，而且用户下一步也进不去 Dashboard。与其静默失败，不如直接说清楚。
+  if (!data.session) {
+    return {
+      ok: false,
+      error: "注册未完成：Supabase 的「Confirm email」仍是开启状态，请在控制台关掉后重试。",
+    };
   }
+
+  // 兜底：数据库里的 handle_new_user 若还是旧版（不读 class_id），这里补写一次。
+  // 新触发器已经写好班级时，这次写的是同样的值，无副作用。
+  const { error: bindErr } = await supabase
+    .from("profiles")
+    .update({ class_id: input.classId })
+    .eq("id", data.user.id);
+  if (bindErr) return { ok: false, error: `加入班级失败：${bindErr.message}` };
+
   return { ok: true };
 }
 
