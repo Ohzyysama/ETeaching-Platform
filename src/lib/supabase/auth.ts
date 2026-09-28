@@ -56,6 +56,13 @@ export async function signIn(input: {
     password: input.password,
   });
   if (error) return { ok: false, error: "用户名或密码错误。" };
+
+  // 软删除的账号：立即登出并给出明确提示
+  const profile = await getCurrentProfile();
+  if (!profile || profile.deleted_at) {
+    await supabase.auth.signOut();
+    return { ok: false, error: "该账号已被删除。" };
+  }
   return { ok: true };
 }
 

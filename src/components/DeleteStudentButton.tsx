@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { deleteStudent } from "@/lib/supabase/db";
+import { deleteStudentPermanently } from "@/lib/supabase/db";
 
 export function DeleteStudentButton({
   id,
@@ -13,9 +13,14 @@ export function DeleteStudentButton({
   const [pending, setPending] = useState(false);
 
   async function onClick() {
-    if (!window.confirm(`确定删除学生「${name}」？删除后该学生将无法再登录使用。`)) return;
+    if (
+      !window.confirm(
+        `确定彻底删除学生「${name}」？\n\n该生的登录账号与全部提交记录会被永久删除，无法恢复；用户名将可被重新注册。`
+      )
+    )
+      return;
     setPending(true);
-    const res = await deleteStudent(id);
+    const res = await deleteStudentPermanently(id);
     if (res.ok) {
       onSaved();
     } else {

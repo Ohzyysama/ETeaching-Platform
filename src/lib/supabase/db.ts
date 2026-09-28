@@ -48,7 +48,7 @@ export async function listStudents(): Promise<Profile[]> {
   return (data ?? []) as Profile[];
 }
 
-/** 软删除学生（保留 auth 账号，但不再出现在任何列表/统计中）。 */
+/** 软删除学生（保留 auth 账号，但不再出现在任何列表/统计中）。界面已不再调用，留作备用。 */
 export async function deleteStudent(studentId: string): Promise<Result> {
   const { error } = await supabase
     .from("profiles")
@@ -56,6 +56,40 @@ export async function deleteStudent(studentId: string): Promise<Result> {
     .eq("id", studentId);
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+/**
+ * 彻底删除学生：连 auth 登录账号一起删掉，用户名/邮箱随之释放（可重新注册），
+ * 提交记录由外键级联清除。
+ *
+ * 删 auth 用户需要 service_role 权限，前端做不到，所以走 Edge Function。
+ * 需要先部署：supabase functions deploy delete-student（见 README）。
+ */
+export async function deleteStudentPermanently(studentId: string): Promise<Result> {
+  const { data, error } = await supabase.functions.invoke("delete-student", {
+    body: { studentId },
+  });
+  if (error) return { ok: false, error: await edgeFunctionError(error) };
+  if (data?.error) return { ok: false, error: String(data.error) };
+  return { ok: true };
+}
+
+/** 取出 Edge Function 返回的错误文案：函数里写的 { error } 在响应体里，不在 error.message 上。 */
+async function edgeFunctionError(error: unknown): Promise<string> {
+  const context = (error as { context?: Response }).context;
+  if (context && typeof context.json === "function") {
+    try {
+      const body = await context.json();
+      if (body?.error) return String(body.error);
+    } catch {
+      // 响应体不是 JSON（例如函数未部署时返回的 404），退回默认提示
+    }
+  }
+  const message = error instanceof Error ? error.message : "";
+  if (/failed to send a request|not found/i.test(message)) {
+    return "删除失败：找不到 delete-student 云函数，请先部署（supabase functions deploy delete-student）。";
+  }
+  return message || "删除失败，请稍后重试。";
 }
 
 export async function updateProfile(
