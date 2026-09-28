@@ -279,13 +279,17 @@ create policy submissions_update_teacher on public.submissions
 -- ============================================================
 -- 存储桶（图片 / 涂鸦）
 -- ============================================================
+-- 必须是公开桶：前端用 getPublicUrl() 生成 /object/public/... 链接，
+-- 桶不公开时该链接会被 Storage 拒绝（400），页面上的图片就全成了裂图。
+-- 用 do update 而不是 do nothing：桶若在控制台手工建过且没勾 Public，
+-- do nothing 会静默跳过、把错误设置一直留在库里。
 insert into storage.buckets (id, name, public)
 values
   ('assignment-images', 'assignment-images', true),
   ('submission-images', 'submission-images', true),
   ('feedback-images', 'feedback-images', true),
   ('annotations', 'annotations', true)
-on conflict (id) do nothing;
+on conflict (id) do update set public = excluded.public;
 
 -- 允许登录用户上传；公开桶已允许公共读取
 do $$

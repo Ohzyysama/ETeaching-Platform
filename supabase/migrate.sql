@@ -80,3 +80,15 @@ begin
   return new;
 end;
 $$;
+
+-- 8. 把四个存储桶强制设为公开
+-- 列一个具体现象：学生上传后教师端照片全是裂图、学生自己刷新却能看到。
+-- 原因是上传成功（走 RLS 的 insert 策略，与桶是否公开无关）但读取失败——
+-- 前端用的是 getPublicUrl()，即 /object/public/... 这条路径，桶 public = false
+-- 时会被 Storage 拒掉（400）。学生那边之所以正常，只是浏览器把刚上传的图缓存了
+-- （uploadFile 里 cacheControl 3600）。
+-- schema.sql 原来写的是 on conflict do nothing，早先在控制台手工建过桶、且没勾
+-- Public 的项目重跑也不会被纠正，所以这里补一次。
+update storage.buckets
+set public = true
+where id in ('assignment-images', 'submission-images', 'feedback-images', 'annotations');

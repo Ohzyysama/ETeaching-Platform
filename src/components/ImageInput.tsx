@@ -17,21 +17,41 @@ export function ImageInput({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onFiles(files: FileList | null) {
     if (!files) return;
     setUploading(true);
+    setError(null);
     const next = [...images];
+    // 被跳过的文件要记下来告诉用户。以前这里是静默 continue，学生传 5 张只成功 2 张
+    // 也看不出来，等到教师端发现少照片时已经无从追查。
+    const skipped: string[] = [];
     for (const file of Array.from(files)) {
-      if (next.length >= maxCount) break;
-      if (!file.type.startsWith("image/")) continue;
-      if (file.size > MAX_MB * 1024 * 1024) continue;
+      if (next.length >= maxCount) {
+        skipped.push(`${file.name}（已达上限 ${maxCount} 张）`);
+        continue;
+      }
+      if (!file.type.startsWith("image/")) {
+        skipped.push(`${file.name}（不是图片）`);
+        continue;
+      }
+      if (file.size > MAX_MB * 1024 * 1024) {
+        skipped.push(`${file.name}（超过 ${MAX_MB}MB）`);
+        continue;
+      }
       const url = await uploadFile(bucket, file);
       if (url) next.push(url);
+      else skipped.push(`${file.name}（上传失败）`);
     }
     onChange(next);
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
+    if (skipped.length > 0) {
+      setError(
+        `以下文件未能上传：${skipped.join("、")}。若反复失败，请检查 Supabase 存储桶配置（桶需为 Public）。`
+      );
+    }
   }
 
   function remove(i: number) {
@@ -40,6 +60,10 @@ export function ImageInput({
 
   return (
     <div>
+      {error ? (
+        <p className="mb-2 font-sans text-sm text-[#ff6f61]">{error}</p>
+      ) : null}
+
       {images.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {images.map((src, i) => (
